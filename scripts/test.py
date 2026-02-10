@@ -7,6 +7,8 @@ import torch
 
 from diffusers import FluxPipeline
 from diffusers.training_utils import set_seed
+import sys
+sys.path.append("..")
 from scheduling_flow_match_euler_discrete_sde import FlowMatchEulerDiscreteSDEScheduler
 from pipeline_rf_inversion_sde import RFInversionFluxPipelineSDE
 
@@ -18,7 +20,7 @@ def download_image(url):
 example_image = download_image("https://www.aiml.informatik.tu-darmstadt.de/people/mbrack/tennis.jpg")
 
 pipe = FluxPipeline.from_pretrained(
-    "black-forest-labs/FLUX.1-dev",
+    "black-forest-labs/FLUX.1-schnell",
     torch_dtype=torch.bfloat16,
 )
 pipe.to("cuda")
@@ -29,12 +31,12 @@ def test_flux(enable_sde: bool = False):
     if enable_sde:
         orig_scheduler = pipe.scheduler
         scheduler=FlowMatchEulerDiscreteSDEScheduler.from_pretrained(
-        "black-forest-labs/FLUX.1-dev",
+        "black-forest-labs/FLUX.1-schnell",
             subfolder="scheduler",
         )
         pipe.scheduler = scheduler
 
-    edited_image = pipe(prompt="a tomato", num_inference_steps=28).images[0]
+    edited_image = pipe(prompt="a tomato", num_inference_steps=4).images[0]
 
     save_dir = "./results/"
     if not os.path.exists(save_dir):
@@ -54,18 +56,18 @@ def test_rf_inversion_sde_sampling(enable_sde: bool = False):
 
     inverted_latents, image_latents, latent_image_ids = pipe_rf_inversion.invert(
         image=example_image, 
-        num_inversion_steps=28, 
+        num_inversion_steps=4, 
         gamma=0.5
     )
 
     edited_image = pipe_rf_inversion(
-        prompt="a tomato",
+        prompt="",
         inverted_latents=inverted_latents,
         image_latents=image_latents,
         latent_image_ids=latent_image_ids,
         start_timestep=0,
-        stop_timestep=7/28,
-        num_inference_steps=28,
+        stop_timestep=1.0,
+        num_inference_steps=4,
         eta=0.9,    
         enable_sde=enable_sde,
     ).images[0]
@@ -79,7 +81,7 @@ def test_rf_inversion_sde_sampling(enable_sde: bool = False):
 
 
 if __name__ == "__main__":
-    test_rf_inversion_sde_sampling(enable_sde=True)
+    #test_rf_inversion_sde_sampling(enable_sde=True)
     test_rf_inversion_sde_sampling(enable_sde=False)
-    test_flux(enable_sde=True)
-    test_flux(enable_sde=False)
+    #test_flux(enable_sde=True)
+    #test_flux(enable_sde=False)
